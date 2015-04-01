@@ -137,6 +137,9 @@ with a specific project.
 The final builder generated from environment and the project will be named:
 `PROJECTNAME-ENVNAME`
 
+All values from the environment dictionary are copied to builders, with
+the exception of the `slaves` list.
+
 The builder will run only on one of the slaves associated with the environment,
 based on a random rule.
 
@@ -144,6 +147,23 @@ To increase availability you can define multiple slaves for an environment,hence
 
 You have the optional `DEFAULT` environment definition with settings for all
 environments.
+
+In addition, the following environment values are always set:
+
+* `CI=true`
+* `BUILDBOT=true`
+* `COMMIT=current_revision`
+* `BRANCH=name_of_the_branch`
+* `BUILD_NUMBER=buildbot_build_number`
+* `BUILDER_NAME=name_of_buildbot_builder`
+* `BUILD_DIR=directory_where_test_is_executed`
+* `TEST_ENVIRONMENT=name_of_builders_environment`
+* `TEST_ARGUMENTS=builder_test_property`
+
+`TEST_ARGUMENTS` are not present in builds triggered by gatekeepers. This is
+done on purpose to avoid variable builds for gatekeepers.
+`TEST_ARGUMENTS` are copied in group builders, as well as skip steps.
+
 
 Example::
 
@@ -185,6 +205,7 @@ Example::
             ],
         },
     }
+
 
 Projects
 ========
@@ -590,10 +611,10 @@ GitHub is configured using the `github` key from root dict::
     }
 
 
-buildbot.tac integration
-========================
+master.cfg integration
+======================
 
-This is the basic content of your buildot.tac ::
+This is the basic content of your master.cfg file::
 
     # You will need to import more things for here to define steps.
     from chevah.buildbot_configuration_builder.builder import (

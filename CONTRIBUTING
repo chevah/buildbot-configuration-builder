@@ -1,0 +1,7 @@
+There is a demo configuration used for functional testsing::
+
+    virtualenv build
+    . build/bin/activate
+    pip install -e .
+
+    buildbot checkconfig demo

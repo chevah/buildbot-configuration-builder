@@ -19,4 +19,8 @@ setup(
         "Intended Audience :: Developers",
         "Programming Language :: Python",
         ],
+    install_requires=[
+        'txgithub>=15.0.0',
+        'buildbot',
+        ],
     )
