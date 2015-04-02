@@ -1,7 +1,11 @@
-There is a demo configuration used for functional testsing::
+There is a demo configuration used for functional testing::
 
     virtualenv build
     . build/bin/activate
     pip install -e .
+    buildbot create-master build/master
+    cp demo/master.cfg build/master/
 
-    buildbot checkconfig demo
+    buildbot checkconfig build/master
+    buildbot start build/master
+    buildbot stop build/master
