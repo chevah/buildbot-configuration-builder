@@ -302,7 +302,9 @@ def message_formatter(mode, name, build, results, master_status):
         steps.append('Step name: %s' % step_name)
         steps.append('Duration: %s' % step_duration)
         for key, value in step.urls.items():
-            steps.append('%s: %s' % (key, str(value)))
+            # The space at the end is important so that the URL are
+            # recognized by email clients.
+            steps.append('%s: %s ' % (key, str(value)))
 
     text.append('Branch: %s' % source_stamp.branch)
     text.append('Build status: %s' % result.upper())
