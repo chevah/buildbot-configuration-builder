@@ -164,6 +164,14 @@ In addition, the following environment values are always set:
 done on purpose to avoid variable builds for gatekeepers.
 `TEST_ARGUMENTS` are copied in group builders, as well as skip steps.
 
+The following environment variables are set if there is a property with the
+same name, but in lowercase:
+
+* `GITHUB_TOKEN`
+* `GITHUB_PULL_ID`
+* `CODECOV_TOKEN`
+* `TEST_AUTHOR`
+
 
 Example::
 
@@ -310,6 +318,10 @@ Steps are defined inside the project's `steps` key::
                 {
                     'name': 'deps',
                     'command': ['bash','./paver.sh', 'deps'],
+                    'add_environment': {
+                        'SOME_VAR': 'some-value',
+                        'OTHER_VAR': Interpolate('%(prop:builder)s'),
+                        },
                     },
                 # Run tests
                 {
@@ -447,6 +459,10 @@ Gatekeepers are defined inside the project's `gatekeepers` key::
                         'type': PARALLEL_GROUP,
                         'name': 'check review step',
                         'target': 'supported',
+                        'set_properties': {
+                            'codecov_token': '1234',
+                            },
+                        'copy_properties': ['github_pull_id'],
                         }],
                     'notifications': {
                         'email_all': [INTERESTED_USERS],

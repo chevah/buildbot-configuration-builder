@@ -8,4 +8,5 @@ There is a demo configuration used for functional testing::
 
     buildbot checkconfig build/master
     buildbot start build/master
+    # check http://localhost:8080/
     buildbot stop build/master

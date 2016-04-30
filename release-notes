@@ -1,4 +1,11 @@
-0.1.0 02/04/2014
+0.3.0 30/04/2016
+================
+
+* Allow passing properties between triggered builders.
+* Add `CODECOV_TOKEN` to the env, if present as a property.
+
+
+0.1.0 2014-04-02
 ================
 
 * Project created.

@@ -146,14 +146,17 @@ class RunStepsFactory(BuildFactory, object):
         """
         Run all builders from group one after another.
         """
+        set_properties = step.get('set_properties', {})
+        copy_properties = step.get('copy_properties', [])
+
         target_group = step['target']
         for target in self._project.getGroupMembersBuilderNames(target_group):
             step = Trigger(
                 schedulerNames=[target],
                 waitForFinish=True,
                 updateSourceStamp=True,
-                set_properties={},
-                copy_properties=[],
+                set_properties=set_properties,
+                copy_properties=copy_properties,
                 )
             self.addStep(step)
 
@@ -161,14 +164,17 @@ class RunStepsFactory(BuildFactory, object):
         """
         Run all builders from group in parallel.
         """
+        set_properties = step.get('set_properties', {})
+        copy_properties = step.get('copy_properties', [])
+
         target_group = step['target']
         targets = self._project.getGroupMembersBuilderNames(target_group)
         self.addStep(Trigger(
             schedulerNames=targets,
             waitForFinish=True,
             updateSourceStamp=True,
-            set_properties={},
-            copy_properties=[],
+            set_properties=set_properties,
+            copy_properties=copy_properties,
             haltOnFailure=True,
             flunkOnFailure=True,
             ))
@@ -867,6 +873,8 @@ class ConfigurationBuilder(object):
             'BUILD_DIR': Interpolate('%(prop:workdir)s'),
             'TEST_ENVIRONMENT': name,
             'TEST_ARGUMENTS': Interpolate('%(prop:test)s'),
+
+            'CODECOV_TOKEN': Interpolate('%(prop:codecov_token)s'),
 
             'GITHUB_TOKEN': self._raw['github']['token'],
             'GITHUB_PULL_ID': Interpolate('%(prop:github_pull_id)s'),
