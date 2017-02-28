@@ -6,6 +6,7 @@ from buildbot.config import BuilderConfig
 from buildbot.changes.gitpoller import GitPoller
 from buildbot.changes.filter import ChangeFilter
 from buildbot.interfaces import IEmailLookup
+from buildbot.process.buildstep import BuildStep
 from buildbot.process.factory import BuildFactory
 from buildbot.process.properties import Property, Interpolate
 from buildbot.schedulers.basic import SingleBranchScheduler
@@ -13,6 +14,7 @@ from buildbot.schedulers.triggerable import Triggerable
 from buildbot.schedulers.trysched import Try_Userpass
 from buildbot.status import html
 from buildbot.status.github import GitHubStatus
+from buildbot.status.results import FAILURE, SUCCESS
 from buildbot.status.web import authz
 from buildbot.status.web.auth import HTPasswdAuth
 from buildbot.status.mail import MailNotifier as BuildbotMailNotifier
@@ -38,6 +40,8 @@ MASTER_COMMAND = 'master_command'
 SLAVE_COMMAND = 'slave_command'
 SOURCE_COMMAND = 'source_command'
 
+ATTACH_PNG = 'attach_png'
+
 TRY = object()
 
 POLL_INTERVAL = 60
@@ -58,6 +62,45 @@ class UnixCommand(ShellCommand, object):
         if test_shell:
             # On Window system we call the command with sh.exe.
             self.command.insert(0, test_shell)
+
+
+class AttachPNG(ShellCommand):
+    """
+    Attach a PNG image from the slave build folder.
+    """
+
+    def __init__(self, name, source):
+        self._name = name
+        self._source = source
+        ShellCommand.__init__(
+            self,
+            command='base64 %s' % (self._source,),
+            description='attaching screen',
+            descriptionDone='screen attached',
+             )
+
+    def createSummary(self, log):
+        image = log.getText().strip()
+        if image.startswith('base64:'):
+            # Some kind of error while getting the image.
+            if 'No such file or directory' in image:
+                # No image generated... all good.
+                self.finished(SUCCESS)
+            else:
+                # There is an error.
+                self.finished(FAILURE)
+            return defer.succeed(None)
+
+        raw_html = '''
+<html><body><img src="data:image/png;base64,%s" alt="beastie.png" scale="0">
+</body></html>
+''' % (image,)
+        self.addHTMLLog(self._source, html=raw_html)
+        self.finished(SUCCESS)
+        # The first log is the stdio, and we don't need it as we have it in
+        # HTML.
+        self._step_status.logs.pop(0)
+        return defer.succeed(None)
 
 
 class RunStepsFactory(BuildFactory, object):
@@ -213,6 +256,18 @@ class RunStepsFactory(BuildFactory, object):
             masterdest=step['destination'],
             haltOnFailure=True,
             doStepIf=do_step_if,
+            ))
+
+    def _add_step_attach_png(self, step):
+        """
+        Attach a PNG file as embedded HTML
+        logs.
+        """
+        name = step.get('name', 'Attach PNG')
+        source = step.get('source', 'screenshot.png')
+        self.addStep(AttachPNG(
+            name=name,
+            source=source,
             ))
 
 

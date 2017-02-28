@@ -7,6 +7,13 @@ There is a demo configuration used for functional testing::
     cp demo/master.cfg build/master/
 
     buildbot checkconfig build/master
-    buildbot start build/master
+    buildbot start --nodaemon build/master
     # check http://localhost:8080/
     buildbot stop build/master
+
+
+For the buildslave::
+
+    pip install buildbot-slave
+    buildslave create-slave build/slave localhost:8089 local-slave password
+    buildslave start --nodaemon build/slave/

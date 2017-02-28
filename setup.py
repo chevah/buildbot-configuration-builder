@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-VERSION = '0.3.0'
+VERSION = '0.4.0'
 
 setup(
     name="chevah-buildbot-configuration-builder",

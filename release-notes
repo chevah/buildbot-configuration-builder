@@ -1,3 +1,9 @@
+0.4.0 28/02/2017
+================
+
+* Add ATTACH_PNG to have a step which shows a PNG imagae from the slave.
+
+
 0.3.0 30/04/2016
 ================
 
