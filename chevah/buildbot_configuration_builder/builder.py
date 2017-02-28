@@ -92,9 +92,9 @@ class AttachPNG(ShellCommand):
             return defer.succeed(None)
 
         raw_html = '''
-<html><body><img src="data:image/png;base64,%s" alt="beastie.png" scale="0">
+<html><body><img src="data:image/png;base64,%s" alt="%s" scale="0">
 </body></html>
-''' % (image,)
+''' % (image, self._source)
         self.addHTMLLog(self._source, html=raw_html)
         self.finished(SUCCESS)
         # The first log is the stdio, and we don't need it as we have it in
