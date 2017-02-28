@@ -14,7 +14,7 @@ from buildbot.schedulers.triggerable import Triggerable
 from buildbot.schedulers.trysched import Try_Userpass
 from buildbot.status import html
 from buildbot.status.github import GitHubStatus
-from buildbot.status.results import FAILURE, SUCCESS
+from buildbot.status.results import FAILURE, SKIPPED, SUCCESS
 from buildbot.status.web import authz
 from buildbot.status.web.auth import HTPasswdAuth
 from buildbot.status.mail import MailNotifier as BuildbotMailNotifier
@@ -85,7 +85,7 @@ class AttachPNG(ShellCommand):
             # Some kind of error while getting the image.
             if 'No such file or directory' in image:
                 # No image generated... all good.
-                self.finished(SUCCESS)
+                self.finished(SKIPPED)
             else:
                 # There is an error.
                 self.finished(FAILURE)
