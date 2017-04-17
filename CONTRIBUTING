@@ -12,8 +12,21 @@ There is a demo configuration used for functional testing::
     buildbot stop build/master
 
 
-For the buildslave::
+For the buildslave (in the same venv, and venv is active)::
 
     pip install buildbot-slave
     buildslave create-slave build/slave localhost:8089 local-slave password
     buildslave start --nodaemon build/slave/
+
+For buildbot try (same venv, and venv is active). This should match the
+values from the main configuration for port and credentials::
+
+    buildbot try \
+        --connect=pb --master=127.0.0.1:8087 \
+        --username=build-config-try-user --passwd=pass \
+        --get-builder-names
+
+    buildbot try \
+        --connect=pb --master=127.0.0.1:8087 --vc=git \
+        --username=build-config-try-user --passwd=pass \
+        --wait -b compat-windows

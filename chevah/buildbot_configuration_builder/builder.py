@@ -67,9 +67,12 @@ class UnixCommand(ShellCommand, object):
 class AttachPNG(ShellCommand):
     """
     Attach a PNG image from the slave build folder.
+
+    This is designed to report failures, so by default it will always
+    be executed.
     """
 
-    def __init__(self, name, source):
+    def __init__(self, name, source, alwaysRun=True):
         self._name = name
         self._source = source
         ShellCommand.__init__(
@@ -77,7 +80,8 @@ class AttachPNG(ShellCommand):
             command='base64 %s' % (self._source,),
             description='attaching screen',
             descriptionDone='screen attached',
-             )
+            alwaysRun=alwaysRun,
+            )
 
     def createSummary(self, log):
         image = log.getText().strip()
@@ -159,6 +163,8 @@ class RunStepsFactory(BuildFactory, object):
 
         optional = step.get('optional', False)
 
+        always_run = step.get('always-run', True)
+
         force_name = 'force_' + name
 
         # Build environment variables from base environment plus
@@ -183,6 +189,7 @@ class RunStepsFactory(BuildFactory, object):
             env=step_environment,
             description=name,
             descriptionDone=done_name,
+            alwaysRun=always_run,
             ))
 
     def _add_step_sequential_group(self, step):
@@ -227,10 +234,12 @@ class RunStepsFactory(BuildFactory, object):
         Add a step for master command.
         """
         name = step.get('name', 'Master command')
+        always_run = step.get('always-run', False)
         self.addStep(MasterShellCommand(
             name=name,
             command=step['command'],
             haltOnFailure=True,
+            alwaysRun=always_run,
             ))
 
     def _add_step_directory_upload(self, step):
@@ -240,6 +249,7 @@ class RunStepsFactory(BuildFactory, object):
         name = step.get('name', 'Directory upload')
 
         optional = step.get('optional', False)
+        always_run = step.get('always-run', False)
         force_name = 'force_' + name
         done_name = name
         if optional:
@@ -256,6 +266,7 @@ class RunStepsFactory(BuildFactory, object):
             masterdest=step['destination'],
             haltOnFailure=True,
             doStepIf=do_step_if,
+            alwaysRun=always_run,
             ))
 
     def _add_step_attach_png(self, step):
@@ -265,9 +276,11 @@ class RunStepsFactory(BuildFactory, object):
         """
         name = step.get('name', 'Attach PNG')
         source = step.get('source', 'screenshot.png')
+        always_run = step.get('always-run', True)
         self.addStep(AttachPNG(
             name=name,
             source=source,
+            alwaysRun=always_run,
             ))
 
 
@@ -517,7 +530,6 @@ class ProjectConfiguration(object):
         """
         Add project to buildbot_configuration:
         """
-        steps = self._getSteps()
         self._all_builder_names = []
 
         # Create builders after we resolve all group_builder_names.
@@ -532,6 +544,8 @@ class ProjectConfiguration(object):
                 # Create new builder for environment.
                 self._all_builder_names.append(builder_name)
 
+
+                steps = self._getSteps(member_name)
                 slaves = self._parent.getSlaves(member_name)
                 builder = BuilderConfig(
                     name=builder_name,
@@ -557,14 +571,21 @@ class ProjectConfiguration(object):
         self._addTryBuilders()
         self._addGateKeepers()
 
-    def _getSteps(self):
+    def _getSteps(self, name):
         """
         Resolve steps.
         """
-        steps = self._parent.getDefaultSteps()
-        project_steps = self._raw.get('steps', [])
-        if project_steps:
-            steps = project_steps
+        steps = self._parent.getDefaultSteps(name)
+        custom_steps = self._raw.get('steps', {})
+        if custom_steps:
+            # We have custom steps for this project.
+            # We start by getting the default values for the project,
+            # falling back to general default.
+            # Then we try to see if there are customs steps, and then
+            # fall back to default.
+            builder_default = custom_steps.get(DEFAULT, steps)
+            steps = custom_steps.get(name, builder_default)
+
         return steps
 
     def _addChangeSource(self, project, repo, branches):
@@ -608,7 +629,7 @@ class ProjectConfiguration(object):
 
             self._parent.addTryTarget(group_builder_name)
 
-            steps = self._getSteps()
+            steps = self._getSteps(DEFAULT)
 
             builder = BuilderConfig(
                 name=group_builder_name,
@@ -799,11 +820,20 @@ class ConfigurationBuilder(object):
         """
         return self._project_default.get('gatekeepers', {})
 
-    def getDefaultSteps(self):
+    def getDefaultSteps(self, name):
         """
-        Return default steps for a project.
+        Return default steps used for all projects.
         """
-        return self._project_default.get('steps', [])[:]
+        all_steps = self._project_default.get('steps', {})
+        steps = all_steps.get(name, [])
+        if not steps:
+            steps = all_steps.get(DEFAULT, [])
+
+        if not steps:
+            raise AssertionError('Failed to find the default steps for %s.' % (
+                name))
+
+        return steps
 
     def _getBuildSlaves(self):
         """

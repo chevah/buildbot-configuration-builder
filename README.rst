@@ -63,6 +63,10 @@ on multiple operating systems.
 I also wanted the powers of `buildbot try` which allows to test a patch
 without committing the changes.
 
+I also wanted to have separate steps based on each builder, so that the
+documentation or static code analysis builders will not have to run the same
+steps as for the code test.
+
 
 Builders
 ========
