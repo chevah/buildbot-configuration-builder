@@ -83,6 +83,15 @@ class AttachPNG(ShellCommand):
             alwaysRun=alwaysRun,
             )
 
+    def _getLogName(self, name):
+        """
+        Return a name appropriate for the log name.
+        """
+        result = name.replace('$', '_')
+        result = result.replace('/', '_')
+        result = result.replace('\\', '_')
+        return result
+
     def createSummary(self, log):
         image = log.getText().strip()
         if image.startswith('base64:'):
@@ -99,7 +108,7 @@ class AttachPNG(ShellCommand):
 <html><body><img src="data:image/png;base64,%s" alt="%s" scale="0">
 </body></html>
 ''' % (image, self._source)
-        self.addHTMLLog(self._source, html=raw_html)
+        self.addHTMLLog(self._getLogName(self._source), html=raw_html)
         self.finished(SUCCESS)
         # The first log is the stdio, and we don't need it as we have it in
         # HTML.

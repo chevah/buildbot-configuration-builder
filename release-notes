@@ -1,3 +1,9 @@
+0.6.1 17/04/2017
+================
+
+* Fix attach PNG log name when using path or env characters.
+
+
 0.6.0 17/04/2017
 ================
 
