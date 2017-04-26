@@ -172,7 +172,7 @@ class RunStepsFactory(BuildFactory, object):
 
         optional = step.get('optional', False)
 
-        always_run = step.get('always-run', True)
+        always_run = step.get('always-run', False)
 
         force_name = 'force_' + name
 
