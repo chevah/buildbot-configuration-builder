@@ -1,3 +1,9 @@
+0.7.0 02/06/2017
+================
+
+* Allow sending individual GitHub status for each member of a group (parallel
+  or sequential).
+
 0.6.2 26/04/2017
 ================
 

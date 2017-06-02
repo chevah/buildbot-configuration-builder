@@ -201,12 +201,28 @@ class RunStepsFactory(BuildFactory, object):
             alwaysRun=always_run,
             ))
 
+    def _update_github_status(self, step, set_properties):
+        """
+        See if the builder should send GitHub Status.
+        """
+        send_github_status = step.get('github_send_status', False)
+
+        if not send_github_status:
+            return
+
+        parts = self._project._github_slug.split('/', 1)
+        set_properties.update({
+            "github_repo_owner": parts[0],
+            "github_repo_name": parts[1],
+            })
+
     def _add_step_sequential_group(self, step):
         """
         Run all builders from group one after another.
         """
         set_properties = step.get('set_properties', {})
         copy_properties = step.get('copy_properties', [])
+        self._update_github_status(step, set_properties)
 
         target_group = step['target']
         for target in self._project.getGroupMembersBuilderNames(target_group):
@@ -225,6 +241,7 @@ class RunStepsFactory(BuildFactory, object):
         """
         set_properties = step.get('set_properties', {})
         copy_properties = step.get('copy_properties', [])
+        self._update_github_status(step, set_properties)
 
         target_group = step['target']
         targets = self._project.getGroupMembersBuilderNames(target_group)
