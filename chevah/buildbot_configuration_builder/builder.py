@@ -20,7 +20,7 @@ from buildbot.status.web.auth import HTPasswdAuth
 from buildbot.status.mail import MailNotifier as BuildbotMailNotifier
 from buildbot.steps.master import MasterShellCommand
 from buildbot.steps.shell import ShellCommand
-from buildbot.steps.source import Git
+from buildbot.steps.source.git import Git
 from buildbot.steps.transfer import DirectoryUpload
 from buildbot.steps.trigger import Trigger
 from twisted.internet import defer
@@ -152,8 +152,9 @@ class RunStepsFactory(BuildFactory, object):
         Add a source step.
         """
         # Use 'incremental' when migrating to latest git step.
-        mode = step.get('mode', 'update')
+        mode = step.get('mode', 'incremental')
         branch = step.get('branch', None)
+        config = step.get('config', None)
 
         self.addStep(Git(
             name='get code for ' + self._project.name,
@@ -161,6 +162,7 @@ class RunStepsFactory(BuildFactory, object):
             repourl=self._project.repo,
             branch=branch,
             shallow=False,
+            config=config,
             ))
 
     def _add_step_slave_command(self, step):
