@@ -1,6 +1,8 @@
 #
 # Create buildbot configuration based on a (almost) plain dict.
 #
+import random
+
 from buildbot.buildslave import BuildSlave
 from buildbot.config import BuilderConfig
 from buildbot.changes.gitpoller import GitPoller
@@ -9,6 +11,7 @@ from buildbot.interfaces import IEmailLookup
 from buildbot.process.buildstep import BuildStep
 from buildbot.process.factory import BuildFactory
 from buildbot.process.properties import Property, Interpolate
+from buildbot.process.buildrequestdistributor import BasicBuildChooser
 from buildbot.schedulers.basic import SingleBranchScheduler
 from buildbot.schedulers.triggerable import Triggerable
 from buildbot.schedulers.trysched import Try_Userpass
@@ -46,6 +49,55 @@ TRY = object()
 
 POLL_INTERVAL = 60
 STABLE_TIMER = 300
+
+
+@defer.inlineCallbacks
+def popNextBuild(self):
+    """
+    Called when a new build should be created.
+    """
+    nextBuild = (None, None)
+
+    while True:
+        #  2. pick a build
+        breq = yield self._getNextUnclaimedBuildRequest()
+        if not breq:
+            break
+
+        self.bldr.current_builder_request = breq
+
+        #  1. pick a slave
+        slave = yield self._popNextSlave()
+        if not slave:
+            break
+
+        # either satisfy this build or we leave it for another day
+        self._removeBuildRequest(breq)
+
+        #  3. make sure slave+ is usable for the breq
+        recycledSlaves = []
+        while slave:
+            canStart = yield self.canStartBuild(slave, breq)
+            if canStart:
+                break
+            # try a different slave
+            recycledSlaves.append(slave)
+            slave = yield self._popNextSlave(breq)
+
+        # recycle the slaves that we didnt use to the head of the queue
+        # this helps ensure we run 'nextSlave' only once per slave choice
+        if recycledSlaves:
+            self._unpopSlaves(recycledSlaves)
+
+        #  4. done? otherwise we will try another build
+        if slave:
+            nextBuild = (slave, breq)
+            break
+
+    defer.returnValue(nextBuild)
+
+# Patch Buildbot
+BasicBuildChooser.popNextBuild = popNextBuild
 
 
 class UnixCommand(ShellCommand, object):
@@ -170,11 +222,11 @@ class RunStepsFactory(BuildFactory, object):
         Add a slave command step.
         """
         final_command = step['command'][:]
+
         name = step.get('name', 'Command')
-
         optional = step.get('optional', False)
-
         always_run = step.get('always-run', False)
+        timeout = step.get('timeout', 45)
 
         force_name = 'force_' + name
 
@@ -201,6 +253,7 @@ class RunStepsFactory(BuildFactory, object):
             description=name,
             descriptionDone=done_name,
             alwaysRun=always_run,
+            timeout=timeout,
             ))
 
     def _update_github_status(self, step, set_properties):
@@ -579,6 +632,7 @@ class ProjectConfiguration(object):
                     name=builder_name,
                     slavenames=slaves,
                     category=self._name,
+                    nextSlave=self._nextSlave,
                     factory=RunStepsFactory(
                         project=self,
                         steps=steps,
@@ -662,6 +716,7 @@ class ProjectConfiguration(object):
             builder = BuilderConfig(
                 name=group_builder_name,
                 slavenames=self._parent.getTrySlaves(),
+                nextSlave=self._nextSlave,
                 factory=ParallelFactory(
                     target_builder_names=target_builder_names,
                     steps=steps,
@@ -743,6 +798,7 @@ class ProjectConfiguration(object):
             self._parent.addBuilder(BuilderConfig(
                 name=builder_name,
                 slavenames=slaves,
+                nextSlave=self._nextSlave,
                 factory=RunStepsFactory(
                     project=self,
                     steps=data['steps'],
@@ -762,6 +818,30 @@ class ProjectConfiguration(object):
             repo=self._repo,
             branches=poll_branches,
             )
+
+    def _nextSlave(self, builder, slaves):
+        """
+        Controls which slave will be assigned future jobs.
+        It is passed two arguments, the Builder object which is assigning a
+        new job, and a list of BuildSlave objects.
+
+        The function should return one of the SlaveBuilder objects,
+        or None if none of the available slaves should be used.
+        """
+        request = builder.current_builder_request
+        target_name = request.properties.getProperty('target-slave')
+
+        if target_name:
+            # See if we have the requested slave.
+            for slave_builder in slaves:
+                if slave_builder.slave.slavename == target_name:
+                    return slave_builder
+
+        for slave_builder in slaves:
+            if slave_builder.slave.canStartBuild():
+                return slave_builder
+
+        return random.choice(slaves)
 
 
 class ConfigurationBuilder(object):
